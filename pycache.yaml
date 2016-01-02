@@ -1,0 +1,7 @@
+consumer:
+    uri: tcp://localhost:5555
+    deserialize_func: !!python/name:pickle.loads
+    
+service:
+    uri: tcp://*:5555
+    serialize_func: !!python/name:pickle.dumps
