@@ -33,7 +33,17 @@ class Consumer(object):
         message = jsonio.JSONMessage(command='set', name=name, data=self.serialize_func(data))
         self.socket.send_string(message.dumps())
         
-        self.socket.recv_string()
+        response = jsonio.JSONMessage(json_message=self.socket.recv_string())
+        if not response.result:
+            print("Consumer:set failed to set {name}".format(name=name))
+        
+    def delete(self, name):
+        message = jsonio.JSONMessage(command='del', name=name)
+        self.socket.send_string(message.dumps())
+        
+        response = jsonio.JSONMessage(json_message=self.socket.recv_string())
+        if not response.result:
+            print("Consumer:delete failed to del {name}".format(name=name))
         
 
 def parse_args():

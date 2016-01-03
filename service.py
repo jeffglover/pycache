@@ -37,9 +37,9 @@ class Service(object):
             if message.command == "get":
                 return_data = self.get_data(message)
             elif message.command == "set":
-                self.set_data(message)
-                return_data = jsonio.JSONMessage(result=True).dumps()
-                 
+                return_data = jsonio.JSONMessage(result=self.set_data(message)).dumps()
+            elif message.command == "del":
+                return_data = jsonio.JSONMessage(result=self.del_data(message)).dumps()
             else:
                 print("Service:mainloop: Unknown command {command}".format(command=message.command))
         
@@ -66,6 +66,21 @@ class Service(object):
         self.data[message.name] = self.deserialize_func(message.data)
         
         return True
+    
+    def del_data(self, message):
+        print("Service:del_data: recieved {message}".format(message=message))
+        return_respone = False
+        
+        try:
+            del self.serialized_data[message.name]
+            del self.data[message.name]
+            return_respone = True
+        except:
+            print("Service:del_data: failed to delete")
+            
+        return return_respone
+            
+        
 
 def parse_args():
     """
