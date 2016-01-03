@@ -1,6 +1,7 @@
 consumer:
     uri: tcp://localhost:5555
     deserialize_func: !!python/name:pickle.loads
+    query: 'scan == 4237'
     
 service:
     uri: tcp://*:5555

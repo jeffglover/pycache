@@ -2,13 +2,15 @@
 '''
 Created on Jan 2, 2016
 
-@author: jglover
+@author: jglover,ddorroh
 '''
 
 import zmq
 import argparse
 import pandas as pd
 import yamlio
+import jsonio
+import timers
 
 class Service(object):
     def __init__(self, *args, **kwargs):
@@ -17,19 +19,31 @@ class Service(object):
         self.socket = self.context.socket(zmq.REP)
         self.socket.bind(self.uri)
         
+        with timers.timewith("Service:__init__:serialize"):
+            self.serialized_data = self.serialize_func(self.df)
+        
     def mainloop(self):
+        print("Service:mainloop: Starting...")
+        
         while True:
             #  Wait for next request from client
-            command = self.socket.recv()
+            message = jsonio.JSONMessage(json_message=self.socket.recv())
             
-            return_df = None
-            if command == "get":
-                return_df = self.df
+            print("Service:mainloop: recieved {message}".format(message=message))
+            
+            return_data = ''
+            if message.command == "get":
+                try:
+                    return_data = self.serialize_func(self.df.query(message.query))
+                except AttributeError: # No query member in message
+                    return_data = self.serialized_data
+                except Exception as e: # Bad query
+                    print 'Service:mainloop: Bad query: {exception}'.format(exception=e.message)
             else:
-                print("not sure")
+                print("Service:mainloop: Unknown command {command}".format(command=message.command))
         
             #  Send reply back to client
-            self.socket.send(self.serialize_func(return_df))
+            self.socket.send(return_data)
 
 def parse_args():
     """
