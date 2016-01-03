@@ -8,9 +8,12 @@ Created on Jan 2, 2016
 import zmq
 import argparse
 import yamlio
+import json
 import pandas as pd
 import msgpackio
 import timers
+from urlparse import urlparse
+from socket import gethostname
 
 class Service(object):
     def __init__(self, *args, **kwargs):
@@ -26,6 +29,14 @@ class Service(object):
         except AttributeError:
             self.data = {}
             print("Service:__init__: init with no data")
+            
+        try:
+            info = self.get_info()
+            with open(self.dump_path, 'w') as json_fp:
+                json.dump(info, json_fp)
+            print("Service:info: dump to {file}".format(file=self.dump_path))
+        except:
+            pass
         
     def mainloop(self):
         print("Service:mainloop: Starting...")
@@ -46,6 +57,8 @@ class Service(object):
                 return_data = msgpackio.MessagePackMessage(result=self.append_data(message)).dumps()
             elif message.command == 'append_all':
                 return_data = msgpackio.MessagePackMessage(result=self.append_all_data(message)).dumps()
+            elif message.command == 'info':
+                return_data = msgpackio.MessagePackMessage(self.info(message)).dumps()
             elif message.command == 'stop':
                 runloop = False
                 return_data = msgpackio.MessagePackMessage(result=True).dumps()
@@ -133,8 +146,31 @@ class Service(object):
             print("Service:del_data: failed to delete")
             
         return return_respone
-            
+    
+    def info(self, message):
+        print("Service:info: recieved {message}".format(message=message))
+        info = self.get_info()
         
+        try:
+            with open(message.dump_path, 'w') as json_fp:
+                json.dump(info, json_fp)
+            print("Service:info: dump to {file}".format(file=message.dump_path))
+        except:
+            pass
+        
+        return info
+    
+    def get_info(self):
+        url_info = urlparse(self.uri)
+        
+        info = {}
+        info['data_keys'] = self.data.keys()
+        info['hostname'] = gethostname()
+        info['port'] = url_info.port
+        info['scheme'] = url_info.scheme
+        info['connect_uri'] = "{scheme}://{hostname}:{port}".format(**info)
+        
+        return info
 
 def parse_args():
     """
