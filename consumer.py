@@ -34,6 +34,22 @@ class Consumer(object):
     def append(self, name, data):
         self._write("append", name, data)
         
+    def append_all(self, name):
+        message = msgpackio.MessagePackMessage(command='append_all', name=name)
+        self.socket.send(message.dumps())
+        
+        response = msgpackio.MessagePackMessage(msgpack_message=self.socket.recv())
+        if not response.result:
+            print("Consumer:append_all failed to append_all {name}".format(name=name))
+
+    def stop(self):
+        message = msgpackio.MessagePackMessage(command='stop')
+        self.socket.send(message.dumps())
+        
+        response = msgpackio.MessagePackMessage(msgpack_message=self.socket.recv())
+        if not response.result:
+            print("Consumer:stop failed to stop")
+
     def delete(self, name):
         message = msgpackio.MessagePackMessage(command='del', name=name)
         self.socket.send(message.dumps())
