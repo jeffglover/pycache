@@ -8,8 +8,7 @@ Created on Jan 2, 2016
 import zmq
 import argparse
 import yamlio
-import jsonio
-
+import msgpackio
 
 class Consumer(object):
     def __init__(self, *args, **kwargs):
@@ -22,26 +21,26 @@ class Consumer(object):
         
     def get(self, name, query=None):
         if query is None:
-            message = jsonio.JSONMessage(command='get', name=name)
+            message = msgpackio.MessagePackMessage(command='get', name=name)
         else:
-            message = jsonio.JSONMessage(command='get',query=query, name=name)
+            message = msgpackio.MessagePackMessage(command='get',query=query, name=name)
         
-        self.socket.send_string(message.dumps())
-        return self.deserialize_func(self.socket.recv_string())
+        self.socket.send(message.dumps())
+        return self.deserialize_func(self.socket.recv())
     
     def set(self, name, data):
-        message = jsonio.JSONMessage(command='set', name=name, data=self.serialize_func(data))
-        self.socket.send_string(message.dumps())
+        message = msgpackio.MessagePackMessage(command='set', name=name, data=self.serialize_func(data))
+        self.socket.send(message.dumps())
         
-        response = jsonio.JSONMessage(json_message=self.socket.recv_string())
+        response = msgpackio.MessagePackMessage(msgpack_message=self.socket.recv())
         if not response.result:
             print("Consumer:set failed to set {name}".format(name=name))
         
     def delete(self, name):
-        message = jsonio.JSONMessage(command='del', name=name)
-        self.socket.send_string(message.dumps())
+        message = msgpackio.MessagePackMessage(command='del', name=name)
+        self.socket.send(message.dumps())
         
-        response = jsonio.JSONMessage(json_message=self.socket.recv_string())
+        response = msgpackio.MessagePackMessage(msgpack_message=self.socket.recv())
         if not response.result:
             print("Consumer:delete failed to del {name}".format(name=name))
         

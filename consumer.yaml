@@ -1,0 +1,7 @@
+consumer:
+    uri: tcp://localhost:5555
+    deserialize_func: !!python/name:msgpackio.loads
+    serialize_func: !!python/name:msgpackio.dumps
+    query: 'scan == 4237'
+    name: original
+    
