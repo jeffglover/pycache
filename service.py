@@ -43,6 +43,8 @@ class Service(object):
                 return_data = msgpackio.MessagePackMessage(result=self.del_data(message)).dumps()
             elif message.command == "append":
                 return_data = msgpackio.MessagePackMessage(result=self.append_data(message)).dumps()
+            elif message.command == 'append_all':
+                return_data = msgpackio.MessagePackMessage(result=self.append_all_data(message)).dumps()
             else:
                 print("Service:mainloop: Unknown command {command}".format(command=message.command))
         
@@ -95,6 +97,20 @@ class Service(object):
             print("Service:append_data: create new")
             
         return True
+    
+    def append_all_data(self, message):
+        print("Service:append_all_data: recieved {message}".format(message=message))
+        
+        # the cached seralized data is invalid
+        try:
+            del self.serialized_data[message.name]
+        except KeyError:
+            pass
+        
+        self.data[message.name] = pd.concat( self.data.values() )
+            
+        return True
+    
     
     def del_data(self, message):
         print("Service:del_data: recieved {message}".format(message=message))
