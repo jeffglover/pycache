@@ -1,8 +1,12 @@
 consumer:
     uri: tcp://localhost:5555
     deserialize_func: !!python/name:pickle.loads
+    serialize_func: !!python/name:pickle.dumps
     query: 'scan == 4237'
+    name: original
     
 service:
     uri: tcp://*:5555
+    deserialize_func: !!python/name:pickle.loads
     serialize_func: !!python/name:pickle.dumps
+    data: {'original': !!python/object/apply:pandas.read_csv [Tagged.ObjectIdentifierFeatures.600.10x.balanced.threat-clear.csv]}

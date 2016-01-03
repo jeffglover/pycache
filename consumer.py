@@ -20,14 +20,21 @@ class Consumer(object):
         
         self.socket.connect(self.uri)
         
-    def get(self, query=None):
+    def get(self, name, query=None):
         if query is None:
-            message = jsonio.JSONMessage(command='get')
+            message = jsonio.JSONMessage(command='get', name=name)
         else:
-            message = jsonio.JSONMessage(command='get',query=query)
+            message = jsonio.JSONMessage(command='get',query=query, name=name)
         
-        self.socket.send(message.dumps())
-        return self.deserialize_func(self.socket.recv())
+        self.socket.send_string(message.dumps())
+        return self.deserialize_func(self.socket.recv_string())
+    
+    def set(self, name, data):
+        message = jsonio.JSONMessage(command='set', name=name, data=self.serialize_func(data))
+        self.socket.send_string(message.dumps())
+        
+        self.socket.recv_string()
+        
 
 def parse_args():
     """
@@ -49,9 +56,9 @@ def main():
     
     consumer = Consumer(**config)
     try:
-        df = consumer.get(config['query'])
+        df = consumer.get(name=config['name'], query=config['query'])
     except KeyError:
-        df = consumer.get()
+        df = consumer.get(name=config['name'])
     print(df.describe())
 
 if __name__ == '__main__':

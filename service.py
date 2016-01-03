@@ -7,7 +7,6 @@ Created on Jan 2, 2016
 
 import zmq
 import argparse
-import pandas as pd
 import yamlio
 import jsonio
 import timers
@@ -18,32 +17,55 @@ class Service(object):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REP)
         self.socket.bind(self.uri)
-        
-        with timers.timewith("Service:__init__:serialize"):
-            self.serialized_data = self.serialize_func(self.df)
+        self.serialized_data = {}
+        try:
+            with timers.timewith("Service:__init__:serialize"):
+                for key in self.data:
+                    self.serialized_data[key] = self.serialize_func(self.data[key])
+        except AttributeError:
+            self.data = {}
+            print("Service:__init__: init with no data")
         
     def mainloop(self):
         print("Service:mainloop: Starting...")
         
         while True:
             #  Wait for next request from client
-            message = jsonio.JSONMessage(json_message=self.socket.recv())
-            
-            print("Service:mainloop: recieved {message}".format(message=message))
+            message = jsonio.JSONMessage(json_message=self.socket.recv_string())
             
             return_data = ''
             if message.command == "get":
-                try:
-                    return_data = self.serialize_func(self.df.query(message.query))
-                except AttributeError: # No query member in message
-                    return_data = self.serialized_data
-                except Exception as e: # Bad query
-                    print 'Service:mainloop: Bad query: {exception}'.format(exception=e.message)
+                return_data = self.get_data(message)
+            elif message.command == "set":
+                self.set_data(message)
+                return_data = jsonio.JSONMessage(result=True).dumps()
+                 
             else:
                 print("Service:mainloop: Unknown command {command}".format(command=message.command))
         
             #  Send reply back to client
-            self.socket.send(return_data)
+            self.socket.send_string(return_data)
+            
+    def get_data(self, message):
+        print("Service:get_data: recieved {message}".format(message=message))
+        return_data = ''
+        try:
+            return_data = self.serialize_func(self.data[message.name].query(message.query))
+                
+        except AttributeError: # No query member in message
+            return_data = self.serialized_data[message.name]
+        except Exception as e: # Bad query
+            print 'Service:mainloop: Bad query: {exception}'.format(exception=e.message)
+            
+        return return_data
+    
+    def set_data(self, message):
+        print("Service:mainloop: recieved command = {command}, name = {name}, data_size = {size}"
+                .format(command=message.command, name=message.name, size=len(message.data)))
+        self.serialized_data[message.name] = message.data
+        self.data[message.name] = self.deserialize_func(message.data)
+        
+        return True
 
 def parse_args():
     """
@@ -54,7 +76,6 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="Configure Track Fitting Jobs")
     parser.add_argument("-c", "--config", dest="config", help="YAML config file", type=yamlio.read_yaml, required=True)
-    parser.add_argument("-s", "--csv", dest="df", help="CSV", type=pd.read_csv, required=True)
     parser.add_argument("-d", "--document", dest="document", help="YAML Document", type=str, required=True)
     return parser.parse_args()
 
@@ -62,7 +83,7 @@ def main():
     args = parse_args()
 #     print(args)
 
-    service = Service(df=args.df, **args.config[args.document])
+    service = Service(**args.config[args.document])
     service.mainloop()
 
 if __name__ == '__main__':
