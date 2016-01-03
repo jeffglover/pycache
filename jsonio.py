@@ -17,5 +17,5 @@ class JSONMessage(object):
     def __repr__(self, *args, **kwargs):
         return self.__dict__.__repr__()
 
-    def dumps(self):
-        return json.dumps(self.__dict__)
+    def dumps(self,**kwargs):
+        return json.dumps(self.__dict__,**kwargs)

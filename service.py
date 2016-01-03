@@ -9,6 +9,7 @@ import zmq
 import argparse
 import yamlio
 import jsonio
+import msgpackio
 import timers
 
 class Service(object):
@@ -31,20 +32,20 @@ class Service(object):
         
         while True:
             #  Wait for next request from client
-            message = jsonio.JSONMessage(json_message=self.socket.recv_string())
+            message = msgpackio.MessagePackMessage(msgpack_message=self.socket.recv())
             
             return_data = ''
             if message.command == "get":
                 return_data = self.get_data(message)
             elif message.command == "set":
-                return_data = jsonio.JSONMessage(result=self.set_data(message)).dumps()
+                return_data = msgpackio.MessagePackMessage(result=self.set_data(message)).dumps()
             elif message.command == "del":
-                return_data = jsonio.JSONMessage(result=self.del_data(message)).dumps()
+                return_data = msgpackio.MessagePackMessage(result=self.del_data(message)).dumps()
             else:
                 print("Service:mainloop: Unknown command {command}".format(command=message.command))
         
             #  Send reply back to client
-            self.socket.send_string(return_data)
+            self.socket.send(return_data)
             
     def get_data(self, message):
         print("Service:get_data: recieved {message}".format(message=message))
@@ -95,7 +96,8 @@ def parse_args():
     return parser.parse_args()
 
 def main():
-    args = parse_args()
+    with timers.timewith("main: parse_args"):
+        args = parse_args()
 #     print(args)
 
     service = Service(**args.config[args.document])
