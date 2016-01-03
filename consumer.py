@@ -2,25 +2,31 @@
 '''
 Created on Jan 2, 2016
 
-@author: jglover
+@author: jglover,ddorroh
 '''
 
 import zmq
 import argparse
-import pandas as pd
 import yamlio
+import jsonio
+
 
 class Consumer(object):
     def __init__(self, *args, **kwargs):
         self.__dict__.update(kwargs)
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
-        print("Connecting to hello world server...")
+        print("Consumer: Connecting to service {uri}".format(**kwargs))
+        
         self.socket.connect(self.uri)
         
-    def get(self, *args, **kwargs):
-        self.socket.send(b"get")
+    def get(self, query=None):
+        if query is None:
+            message = jsonio.JSONMessage(command='get')
+        else:
+            message = jsonio.JSONMessage(command='get',query=query)
         
+        self.socket.send(message.dumps())
         return self.deserialize_func(self.socket.recv())
 
 def parse_args():
@@ -38,9 +44,14 @@ def parse_args():
 def main():
     args = parse_args()
     print(args)
-
-    consumer = Consumer(**args.config[args.document])
-    df = consumer.get()    
+    
+    config = args.config[args.document]
+    
+    consumer = Consumer(**config)
+    try:
+        df = consumer.get(config['query'])
+    except KeyError:
+        df = consumer.get()
     print(df.describe())
 
 if __name__ == '__main__':
