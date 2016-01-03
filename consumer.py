@@ -29,12 +29,10 @@ class Consumer(object):
         return self.deserialize_func(self.socket.recv())
     
     def set(self, name, data):
-        message = msgpackio.MessagePackMessage(command='set', name=name, data=self.serialize_func(data))
-        self.socket.send(message.dumps())
+        self._write("set", name, data)
         
-        response = msgpackio.MessagePackMessage(msgpack_message=self.socket.recv())
-        if not response.result:
-            print("Consumer:set failed to set {name}".format(name=name))
+    def append(self, name, data):
+        self._write("append", name, data)
         
     def delete(self, name):
         message = msgpackio.MessagePackMessage(command='del', name=name)
@@ -43,6 +41,14 @@ class Consumer(object):
         response = msgpackio.MessagePackMessage(msgpack_message=self.socket.recv())
         if not response.result:
             print("Consumer:delete failed to del {name}".format(name=name))
+            
+    def _write(self, command, name, data):
+        message = msgpackio.MessagePackMessage(command=command, name=name, data=self.serialize_func(data))
+        self.socket.send(message.dumps())
+        
+        response = msgpackio.MessagePackMessage(msgpack_message=self.socket.recv())
+        if not response.result:
+            print("Consumer:_write failed to {command} {name}".format(command=command, name=name))
         
 
 def parse_args():

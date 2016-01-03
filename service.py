@@ -8,7 +8,7 @@ Created on Jan 2, 2016
 import zmq
 import argparse
 import yamlio
-import jsonio
+import pandas as pd
 import msgpackio
 import timers
 
@@ -41,6 +41,8 @@ class Service(object):
                 return_data = msgpackio.MessagePackMessage(result=self.set_data(message)).dumps()
             elif message.command == "del":
                 return_data = msgpackio.MessagePackMessage(result=self.del_data(message)).dumps()
+            elif message.command == "append":
+                return_data = msgpackio.MessagePackMessage(result=self.append_data(message)).dumps()
             else:
                 print("Service:mainloop: Unknown command {command}".format(command=message.command))
         
@@ -54,26 +56,57 @@ class Service(object):
             return_data = self.serialize_func(self.data[message.name].query(message.query))
                 
         except AttributeError: # No query member in message
-            return_data = self.serialized_data[message.name]
+            try:
+                return_data = self.serialized_data[message.name]
+            except KeyError: # self.serialized_data[message.name] is not set
+                self.serialized_data[message.name] = self.serialize_func(self.data[message.name])
+                return_data = self.serialized_data[message.name]
+                
         except Exception as e: # Bad query
             print 'Service:mainloop: Bad query: {exception}'.format(exception=e.message)
             
         return return_data
     
     def set_data(self, message):
-        print("Service:mainloop: recieved command = {command}, name = {name}, data_size = {size}"
+        print("Service:set_data: recieved command = {command}, name = {name}, data_size = {size}"
                 .format(command=message.command, name=message.name, size=len(message.data)))
         self.serialized_data[message.name] = message.data
         self.data[message.name] = self.deserialize_func(message.data)
         
         return True
     
+    def append_data(self, message):
+        print("Service:append_data: recieved command = {command}, name = {name}, data_size = {size}"
+                .format(command=message.command, name=message.name, size=len(message.data)))
+        
+        # the cached seralized data is invalid
+        try:
+            del self.serialized_data[message.name]
+        except KeyError:
+            pass
+        
+        new_data = self.deserialize_func(message.data)
+        
+        try:
+            self.data[message.name] = pd.concat( [self.data[message.name], new_data] )
+            print("Service:append_data: append to existing")
+        except KeyError:
+            self.data[message.name] = new_data
+            print("Service:append_data: create new")
+            
+        return True
+    
     def del_data(self, message):
         print("Service:del_data: recieved {message}".format(message=message))
         return_respone = False
         
+        # the cached serailzed_data might not be there
         try:
             del self.serialized_data[message.name]
+        except KeyError:
+            pass
+        
+        try:
             del self.data[message.name]
             return_respone = True
         except:
